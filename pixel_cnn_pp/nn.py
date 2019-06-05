@@ -123,7 +123,7 @@ def sample_from_discretized_mix_logistic(l,nr_mix):
 
 def sample_from_binary(l):
     l = tf.sigmoid(l)
-    l = tf.concat((1 - l, l), axis=3)
+    l = tf.log(tf.concat((1 - l, l), axis=3) + 1e-8)
     sample = tf.argmax(l - tf.log(-tf.log(tf.random_uniform(l.get_shape(),
                                                             minval=1e-5, maxval=1. - 1e-5))), 3)
     sample = tf.expand_dims(sample, axis=3)

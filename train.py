@@ -186,6 +186,7 @@ def make_feed_dict(data, init=False):
     x = np.cast[np.float32](x/ 255.)
     if args.data_set == 'mnist':
         x[x > 0.5] = 1.
+        x[x <= 0.5] = 0.
     x = (x - 0.5) / 0.5
     if init:
         feed_dict = {x_init: x}
