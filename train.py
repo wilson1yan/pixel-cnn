@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 # data I/O
 parser.add_argument('-i', '--data_dir', type=str, default='/local_home/tim/pxpp/data', help='Location for the dataset')
 parser.add_argument('-o', '--save_dir', type=str, default='/local_home/tim/pxpp/save', help='Location for parameter checkpoints and samples')
-parser.add_argument('-d', '--data_set', type=str, default='cifar', help='Can be either cifar|imagenet|svhn')
+parser.add_argument('-d', '--data_set', type=str, default='cifar', help='Can be either cifar|imagenet|svhn|mnist')
 parser.add_argument('-t', '--save_interval', type=int, default=20, help='Every how many epochs to write checkpoint/samples?')
 parser.add_argument('-r', '--load_params', dest='load_params', action='store_true', help='Restore training from previous model checkpoint?')
 # model
@@ -59,7 +59,10 @@ tf.set_random_seed(args.seed)
 if args.energy_distance:
     loss_fun = nn.energy_distance
 else:
-    loss_fun = nn.discretized_mix_logistic_loss
+    if args.data_set == 'mnist':
+        loss_fun = nn.cross_entropy_loss
+    else:
+        loss_fun = nn.discretized_mix_logistic_loss
 
 # initialize data loaders for train/test splits
 if args.data_set == 'imagenet' and args.class_conditional:
@@ -73,6 +76,9 @@ elif args.data_set == 'imagenet':
 elif args.data_set == 'svhn':
     import data.svhn_data as svhn_data
     DataLoader = svhn_data.DataLoader
+elif args.data_set == 'mnist':
+    import data.mnist_data as mnist_data
+    DataLoader = mnist_data.DataLoader
 else:
     raise("unsupported dataset")
 train_data = DataLoader(args.data_dir, 'train', args.batch_size * args.nr_gpu, rng=rng, shuffle=True, return_labels=args.class_conditional)
@@ -99,7 +105,9 @@ else:
     hs = h_sample
 
 # create the model
-model_opt = { 'nr_resnet': args.nr_resnet, 'nr_filters': args.nr_filters, 'nr_logistic_mix': args.nr_logistic_mix, 'resnet_nonlinearity': args.resnet_nonlinearity, 'energy_distance': args.energy_distance }
+model_opt = { 'nr_resnet': args.nr_resnet, 'nr_filters': args.nr_filters,
+              'nr_logistic_mix': args.nr_logistic_mix, 'resnet_nonlinearity': args.resnet_nonlinearity,
+              'energy_distance': args.energy_distance , 'data_set': args.data_set}
 model = tf.make_template('model', model_spec)
 
 # run once for data dependent initialization of parameters
@@ -134,7 +142,10 @@ for i in range(args.nr_gpu):
         if args.energy_distance:
             new_x_gen.append(out[0])
         else:
-            new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
+            if args.data_set == 'mnist':
+                new_x_gen.append(nn.sample_from_cat(out))
+            else:
+                new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
 
 # add losses and gradients together and get training updates
 tf_lr = tf.placeholder(tf.float32, shape=[])
@@ -172,7 +183,11 @@ def make_feed_dict(data, init=False):
     else:
         x = data
         y = None
-    x = np.cast[np.float32]((x - 127.5) / 127.5) # input to pixelCNN is scaled from uint8 [0,255] to float in range [-1,1]
+    if args.data_set == 'mnist':
+        x = np.cast[np.float32]((x - 0.5) / 0.5)
+    else:
+        # input to pixelCNN is scaled from uint8 [0,255] to float in range [-1,1]
+        x = np.cast[np.float32]((x - 127.5) / 127.5)
     if init:
         feed_dict = {x_init: x}
         if y is not None:

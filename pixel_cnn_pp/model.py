@@ -7,7 +7,9 @@ import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import arg_scope
 import pixel_cnn_pp.nn as nn
 
-def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5, nr_filters=160, nr_logistic_mix=10, resnet_nonlinearity='concat_elu', energy_distance=False):
+def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5,
+               nr_filters=160, nr_logistic_mix=10, resnet_nonlinearity='concat_elu',
+               energy_distance=False, data_set='cifar'):
     """
     We receive a Tensor x of shape (N,H,W,D1) (e.g. (12,32,32,3)) and produce
     a Tensor x_out of shape (N,H,W,D2) (e.g. (12,32,32,100)), where each fiber
@@ -50,7 +52,7 @@ def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5, nr_f
                 ul_list.append(nn.gated_resnet(ul_list[-1], u_list[-1], conv=nn.down_right_shifted_conv2d))
 
             u_list.append(nn.down_shifted_conv2d(u_list[-1], num_filters=nr_filters, stride=[2, 2]))
-            ul_list.append(nn.down_right_shifted_conv2d(ul_list[-1], num_filters=nr_filters, stride=[2, 2]))
+            ul_list.append(nn.down_right_shiftednin_conv2d(ul_list[-1], num_filters=nr_filters, stride=[2, 2]))
 
             for rep in range(nr_resnet):
                 u_list.append(nn.gated_resnet(u_list[-1], conv=nn.down_shifted_conv2d))
@@ -108,7 +110,8 @@ def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5, nr_f
                 return x_sample
 
             else:
-                x_out = nn.nin(tf.nn.elu(ul),10*nr_logistic_mix)
+                out_channels = 2 if data_set == 'mnist' else 10*nr_logistic_mix
+                x_out = nn.nin(tf.nn.elu(ul),out_channels)
 
                 assert len(u_list) == 0
                 assert len(ul_list) == 0
