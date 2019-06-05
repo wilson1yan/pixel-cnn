@@ -86,9 +86,12 @@ def discretized_mix_logistic_loss(x,l,sum_all=True):
     else:
         return -tf.reduce_sum(log_sum_exp(log_probs),[1,2])
 
-def cross_entropy_loss(x,l,sum_all=True):
-    """ log-likelihood for standard cross-entropy loss"""
-    loss = tf.nn.softmax_cross_entropy_with_logits_v2(x,l)
+def binary_cross_entropy_loss(x,l,sum_all=True):
+    """ log-likelihood for binary cross-entropy loss"""
+    x = x * 0.5 + 0.5
+    x = tf.reshape(x, [-1])
+    l = tf.reshape(l, [-1])
+    loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=x,logits=l)
     if sum_all:
         return tf.reduce_sum(loss)
     else:
@@ -118,9 +121,12 @@ def sample_from_discretized_mix_logistic(l,nr_mix):
     x2 = tf.minimum(tf.maximum(x[:,:,:,2] + coeffs[:,:,:,1]*x0 + coeffs[:,:,:,2]*x1, -1.), 1.)
     return tf.concat([tf.reshape(x0,xs[:-1]+[1]), tf.reshape(x1,xs[:-1]+[1]), tf.reshape(x2,xs[:-1]+[1])],3)
 
-def sample_from_cat(l):
+def sample_from_binary(l):
+    l = tf.sigmoid(l)
+    l = tf.concat((1 - l, l), axis=3)
     sample = tf.argmax(l - tf.log(-tf.log(tf.random_uniform(l.get_shape(),
                                                             minval=1e-5, maxval=1. - 1e-5))), 3)
+    sample = tf.expand_dims(sample, axis=3)
     return sample
 
 def get_var_maybe_avg(var_name, ema, **kwargs):

@@ -60,7 +60,7 @@ if args.energy_distance:
     loss_fun = nn.energy_distance
 else:
     if args.data_set == 'mnist':
-        loss_fun = nn.cross_entropy_loss
+        loss_fun = nn.binary_cross_entropy_loss
     else:
         loss_fun = nn.discretized_mix_logistic_loss
 
@@ -143,7 +143,7 @@ for i in range(args.nr_gpu):
             new_x_gen.append(out[0])
         else:
             if args.data_set == 'mnist':
-                new_x_gen.append(nn.sample_from_cat(out))
+                new_x_gen.append(nn.sample_from_binary(out))
             else:
                 new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
 
@@ -183,11 +183,10 @@ def make_feed_dict(data, init=False):
     else:
         x = data
         y = None
+    x = np.cast[np.float32](x/ 255.)
     if args.data_set == 'mnist':
-        x = np.cast[np.float32]((x - 0.5) / 0.5)
-    else:
-        # input to pixelCNN is scaled from uint8 [0,255] to float in range [-1,1]
-        x = np.cast[np.float32]((x - 127.5) / 127.5)
+        x[x > 0.5] = 1.
+    x = (x - 0.5) / 0.5
     if init:
         feed_dict = {x_init: x}
         if y is not None:
@@ -254,6 +253,8 @@ with tf.Session() as sess:
             for i in range(args.num_samples):
                 sample_x.append(sample_from_model(sess))
             sample_x = np.concatenate(sample_x,axis=0)
+            if args.data_set == 'mnist':
+                sample_x = np.squeeze(sample_x, axis=3)
             img_tile = plotting.img_tile(sample_x[:100], aspect_ratio=1.0, border_color=1.0, stretch=True)
             img = plotting.plot_img(img_tile, title=args.data_set + ' samples')
             plotting.plt.savefig(os.path.join(args.save_dir,'%s_sample%d.png' % (args.data_set, epoch)))

@@ -38,7 +38,7 @@ def maybe_download_and_extract(data_dir, subset):
 
     if not os.path.exists(image_path) or not os.path.exists(label_path):
         image_url = URL + img_fname
-        label_url = URL + img_fname
+        label_url = URL + label_fname
 
         download(img_fname, image_url, image_path)
         download(label_fname, label_url, label_path)
@@ -65,9 +65,9 @@ class DataLoader(object):
     """ an object that generates batches of MNIST data for training """
 
     def __init__(self, data_dir, subset, batch_size, rng=None, shuffle=False, return_labels=False):
-        """ 
+        """
         - data_dir is location where to store files
-        - subset is train|test 
+        - subset is train|test
         - batch_size is int, of #examples to load at once
         - rng is np.random.RandomState object for reproducibility
         """
@@ -85,7 +85,7 @@ class DataLoader(object):
         # load MNIST training data to RAM
         self.data, self.labels = load(data_dir, subset=subset)
         self.data = np.transpose(self.data, (0,2,3,1)) # (N,3,32,32) -> (N,32,32,3)
-        
+
         self.p = 0 # pointer to where we are in iteration
         self.rng = np.random.RandomState(1) if rng is None else rng
 
