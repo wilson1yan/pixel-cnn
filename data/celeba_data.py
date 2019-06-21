@@ -14,6 +14,7 @@ from torchvision import datasets, transforms
 
 def load(data_dir, subset='train'):
     transform = transforms.Compose([
+        lambda x: transforms.functional.crop(x, 50, 25, 128, 128),
         transforms.Resize((32, 32)),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
