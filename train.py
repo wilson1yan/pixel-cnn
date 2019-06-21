@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 # data I/O
 parser.add_argument('-i', '--data_dir', type=str, default='/local_home/tim/pxpp/data', help='Location for the dataset')
 parser.add_argument('-o', '--save_dir', type=str, default='/local_home/tim/pxpp/save', help='Location for parameter checkpoints and samples')
-parser.add_argument('-d', '--data_set', type=str, default='cifar', help='Can be either cifar|imagenet|svhn|mnist')
+parser.add_argument('-d', '--data_set', type=str, default='cifar', help='Can be either cifar|imagenet|svhn|celeba')
 parser.add_argument('-t', '--save_interval', type=int, default=20, help='Every how many epochs to write checkpoint/samples?')
 parser.add_argument('-r', '--load_params', dest='load_params', action='store_true', help='Restore training from previous model checkpoint?')
 # model
@@ -59,10 +59,7 @@ tf.set_random_seed(args.seed)
 if args.energy_distance:
     loss_fun = nn.energy_distance
 else:
-    if args.data_set == 'mnist':
-        loss_fun = nn.binary_cross_entropy_loss
-    else:
-        loss_fun = nn.discretized_mix_logistic_loss
+    loss_fun = nn.discretized_mix_logistic_loss
 
 # initialize data loaders for train/test splits
 if args.data_set == 'imagenet' and args.class_conditional:
@@ -76,9 +73,9 @@ elif args.data_set == 'imagenet':
 elif args.data_set == 'svhn':
     import data.svhn_data as svhn_data
     DataLoader = svhn_data.DataLoader
-elif args.data_set == 'mnist':
-    import data.mnist_data as mnist_data
-    DataLoader = mnist_data.DataLoader
+elif args.data_set == 'celeba':
+    import data.celeba_data as celeba_data
+    DataLoader = celeba_data.DataLoader
 else:
     raise("unsupported dataset")
 train_data = DataLoader(args.data_dir, 'train', args.batch_size * args.nr_gpu, rng=rng, shuffle=True, return_labels=args.class_conditional)
@@ -142,10 +139,7 @@ for i in range(args.nr_gpu):
         if args.energy_distance:
             new_x_gen.append(out[0])
         else:
-            if args.data_set == 'mnist':
-                new_x_gen.append(nn.sample_from_binary(out))
-            else:
-                new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
+            new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
 
 # add losses and gradients together and get training updates
 tf_lr = tf.placeholder(tf.float32, shape=[])
@@ -183,11 +177,7 @@ def make_feed_dict(data, init=False):
     else:
         x = data
         y = None
-    x = np.cast[np.float32](x/ 255.)
-    if args.data_set == 'mnist':
-        x[x > 0.5] = 1.
-        x[x <= 0.5] = 0.
-    x = (x - 0.5) / 0.5
+    # x = np.cast[np.float32]((x - 127.5) / 127.5)
     if init:
         feed_dict = {x_init: x}
         if y is not None:
@@ -254,8 +244,6 @@ with tf.Session() as sess:
             for i in range(args.num_samples):
                 sample_x.append(sample_from_model(sess))
             sample_x = np.concatenate(sample_x,axis=0)
-            if args.data_set == 'mnist':
-                sample_x = np.squeeze(sample_x, axis=3)
             img_tile = plotting.img_tile(sample_x[:100], aspect_ratio=1.0, border_color=1.0, stretch=True)
             img = plotting.plot_img(img_tile, title=args.data_set + ' samples')
             plotting.plt.savefig(os.path.join(args.save_dir,'%s_sample%d.png' % (args.data_set, epoch)))
