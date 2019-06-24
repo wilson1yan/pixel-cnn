@@ -95,7 +95,30 @@ def binary_cross_entropy_loss(x,l,sum_all=True):
     if sum_all:
         return tf.reduce_sum(loss)
     else:
-        return tf.reduce_sum(loss,[1,2])
+        return tf.reduce_sum(loss,[1, 2])
+
+def cross_entropy_loss(x, l, sum_all=True):
+    ls = int_shape(l) # B,32,32,3*32
+    n_color_dim = int(ls[-1] / 3)
+    l = tf.reshape(l, (ls[0], ls[1], ls[2], 3, n_color_dim))
+    x = (x * 0.5 + 0.5) * 255
+    x = tf.floor(x / (2 ** 8 / n_color_dim))
+    x = tf.cast(x, tf.int32)
+    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(x, l)
+    if sum_all:
+        return tf.reduce_sum(loss)
+    else:
+        retrun tf.reduce_sum(loss, [1, 2])
+
+def sample_from_cat(l, temperature=1.0):
+    ls = int_shape(l) # B,32,32,3*32
+    n_color_dim = int(ls[-1] / 3)
+    l = tf.reshape(l, (ls[0], ls[1], ls[2], 3, n_color_dim))
+    samples = tf.argmax(l / temperature - tf.log(-tf.log(tf.random_uniform(l.get_shape(), minval=1e-5, maxval=1-1e-5))), axis=-1)
+    samples = tf.cast(samples, tf.float32)
+    samples /= n_color_dim - 1
+    return samples
+
 
 def sample_from_discretized_mix_logistic(l,nr_mix):
     ls = int_shape(l)

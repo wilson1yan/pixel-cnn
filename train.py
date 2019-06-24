@@ -34,6 +34,8 @@ parser.add_argument('-m', '--nr_logistic_mix', type=int, default=10, help='Numbe
 parser.add_argument('-z', '--resnet_nonlinearity', type=str, default='concat_elu', help='Which nonlinearity to use in the ResNet layers. One of "concat_elu", "elu", "relu" ')
 parser.add_argument('-c', '--class_conditional', dest='class_conditional', action='store_true', help='Condition generative model on labels?')
 parser.add_argument('-ed', '--energy_distance', dest='energy_distance', action='store_true', help='use energy distance in place of likelihood')
+parser.add_argument('-dt', '--dist', dest='dist', default='dmol', help='Output distribution type (dmol|cat)')
+parser.add_argument('-c', '--n_pixel_bit', default=8, help='Number of bits per pixel channel')
 # optimization
 parser.add_argument('-l', '--learning_rate', type=float, default=0.001, help='Base learning rate')
 parser.add_argument('-e', '--lr_decay', type=float, default=0.999995, help='Learning rate decay, applied every step of the optimization')
@@ -59,7 +61,10 @@ tf.set_random_seed(args.seed)
 if args.energy_distance:
     loss_fun = nn.energy_distance
 else:
-    loss_fun = nn.discretized_mix_logistic_loss
+    if args.dist == 'dmol':
+        loss_fun = nn.discretized_mix_logistic_loss
+    else:
+        loss_fun = nn.cross_entropy_loss
 
 # initialize data loaders for train/test splits
 if args.data_set == 'imagenet' and args.class_conditional:
@@ -104,7 +109,8 @@ else:
 # create the model
 model_opt = { 'nr_resnet': args.nr_resnet, 'nr_filters': args.nr_filters,
               'nr_logistic_mix': args.nr_logistic_mix, 'resnet_nonlinearity': args.resnet_nonlinearity,
-              'energy_distance': args.energy_distance , 'data_set': args.data_set}
+              'energy_distance': args.energy_distance , 'data_set': args.data_set,
+              'dist': args.dist, 'n_pixel_bit':args.n_pixel_bit}
 model = tf.make_template('model', model_spec)
 
 # run once for data dependent initialization of parameters
@@ -139,7 +145,10 @@ for i in range(args.nr_gpu):
         if args.energy_distance:
             new_x_gen.append(out[0])
         else:
-            new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
+            if args.dist == 'dmol':
+                new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
+            else:
+                new_x_gen.append(nn.sample_from_cat(out))
 
 # add losses and gradients together and get training updates
 tf_lr = tf.placeholder(tf.float32, shape=[])
@@ -168,7 +177,7 @@ def sample_from_model(sess):
 
 # init & save
 initializer = tf.global_variables_initializer()
-saver = tf.train.Saver()
+saver = tf.train.Saver(write_version=tf.train.SaverDef.V1)
 
 # turn numpy inputs into feed_dict for use with tensorflow
 def make_feed_dict(data, init=False):
