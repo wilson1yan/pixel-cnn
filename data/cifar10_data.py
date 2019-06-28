@@ -78,7 +78,7 @@ class DataLoader(object):
         self.data = np.transpose(self.data, (0,2,3,1)) # (N,3,32,32) -> (N,32,32,3)
         rgb_weights = np.array([0.21, 0.72, 0.07]).reshape((1, 1, 1, 3))
         self.data = np.sum(self.data * rgb_weights, axis=-1, keepdims=True)
-        print(self.data.shape, self.data.max(), self.data.min(), 'should be (B,1,32,32), 255, 0')
+        print(self.data.shape, self.data.max(), self.data.min(), 'should be (B,32,32,1), 255, 0')
         self.data = np.floor(self.data / 16)
         print(self.data.max(), self.data.min(), 'should be 15, 0')
         self.data = (self.data / 15 - 0.5) / 0.5
