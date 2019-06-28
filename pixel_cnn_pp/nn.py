@@ -97,10 +97,10 @@ def binary_cross_entropy_loss(x,l,sum_all=True):
     else:
         return tf.reduce_sum(loss,[1, 2])
 
-def cross_entropy_loss(x, l, sum_all=True):
+def cross_entropy_loss(x, l, sum_all=True, nr_color_channels=3):
     ls = int_shape(l) # B,32,32,3*32
-    n_color_dim = int(ls[-1] / 3)
-    l = tf.reshape(l, (ls[0], ls[1], ls[2], 3, n_color_dim))
+    n_color_dim = int(ls[-1] / nr_color_channels)
+    l = tf.reshape(l, (ls[0], ls[1], ls[2], nr_color_channels, n_color_dim))
     x = (x * 0.5 + 0.5) * (n_color_dim - 1)
     x = tf.cast(x, tf.int32)
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=x, logits=l)
@@ -109,11 +109,11 @@ def cross_entropy_loss(x, l, sum_all=True):
     else:
         return tf.reduce_sum(loss, [1, 2])
 
-def sample_from_cat(l, temperature=1.0):
+def sample_from_cat(l, temperature=1.0, nr_color_channels=3):
     ls = int_shape(l) # B,32,32,3*32
-    n_color_dim = int(ls[-1] / 3)
+    n_color_dim = int(ls[-1] / nr_color_channels)
     print('n_color_dim', n_color_dim)
-    l = tf.reshape(l, (ls[0], ls[1], ls[2], 3, n_color_dim))
+    l = tf.reshape(l, (ls[0], ls[1], ls[2], nr_color_channels, n_color_dim))
     samples = tf.argmax(l / temperature - tf.log(-tf.log(tf.random_uniform(l.get_shape(), minval=1e-5, maxval=1-1e-5))), axis=-1)
     samples = tf.cast(samples, tf.float32)
     samples /= n_color_dim - 1

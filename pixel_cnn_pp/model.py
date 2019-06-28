@@ -9,7 +9,8 @@ import pixel_cnn_pp.nn as nn
 
 def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5,
                nr_filters=160, nr_logistic_mix=10, resnet_nonlinearity='concat_elu',
-               energy_distance=False, data_set='cifar', dist='dmol', n_pixel_bit=8):
+               energy_distance=False, data_set='cifar', dist='dmol', n_pixel_bit=8,
+               nr_color_channels=3):
     """
     We receive a Tensor x of shape (N,H,W,D1) (e.g. (12,32,32,3)) and produce
     a Tensor x_out of shape (N,H,W,D2) (e.g. (12,32,32,100)), where each fiber
@@ -115,7 +116,7 @@ def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5,
                     out_channels = 10 * nr_logistic_mix
                 else:
                     print('Cat', 2 ** n_pixel_bit)
-                    out_channels = 3 * (2 ** n_pixel_bit)
+                    out_channels = nr_color_channels * (2 ** n_pixel_bit)
                 x_out = nn.nin(tf.nn.elu(ul),out_channels)
 
                 assert len(u_list) == 0

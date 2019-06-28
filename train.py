@@ -36,6 +36,7 @@ parser.add_argument('-c', '--class_conditional', dest='class_conditional', actio
 parser.add_argument('-ed', '--energy_distance', dest='energy_distance', action='store_true', help='use energy distance in place of likelihood')
 parser.add_argument('-dt', '--dist', dest='dist', default='dmol', help='Output distribution type (dmol|cat)')
 parser.add_argument('-pb', '--n_pixel_bit', default=8, type=int, help='Number of bits per pixel channel')
+parser.add_argument('-nc', '--nr_color_channels', default=3, type=int)
 # optimization
 parser.add_argument('-l', '--learning_rate', type=float, default=0.001, help='Base learning rate')
 parser.add_argument('-e', '--lr_decay', type=float, default=0.999995, help='Learning rate decay, applied every step of the optimization')
@@ -110,7 +111,7 @@ else:
 model_opt = { 'nr_resnet': args.nr_resnet, 'nr_filters': args.nr_filters,
               'nr_logistic_mix': args.nr_logistic_mix, 'resnet_nonlinearity': args.resnet_nonlinearity,
               'energy_distance': args.energy_distance , 'data_set': args.data_set,
-              'dist': args.dist, 'n_pixel_bit':args.n_pixel_bit}
+              'dist': args.dist, 'n_pixel_bit':args.n_pixel_bit, 'nr_color_channels':args.nr_color_channels}
 model = tf.make_template('model', model_spec)
 
 # run once for data dependent initialization of parameters
@@ -131,14 +132,14 @@ for i in range(args.nr_gpu):
     with tf.device('/gpu:%d' % i):
         # train
         out = model(xs[i], hs[i], ema=None, dropout_p=args.dropout_p, **model_opt)
-        loss_gen.append(loss_fun(tf.stop_gradient(xs[i]), out))
+        loss_gen.append(loss_fun(tf.stop_gradient(xs[i]), out, nr_color_channels=args.nr_color_channels))
 
         # gradients
         grads.append(tf.gradients(loss_gen[i], all_params, colocate_gradients_with_ops=True))
 
         # test
         out = model(xs[i], hs[i], ema=ema, dropout_p=0., **model_opt)
-        loss_gen_test.append(loss_fun(xs[i], out))
+        loss_gen_test.append(loss_fun(xs[i], out, nr_color_channels=args.nr_color_channels))
 
         # sample
         out = model(xs[i], h_sample[i], ema=ema, dropout_p=0, **model_opt)
@@ -148,7 +149,7 @@ for i in range(args.nr_gpu):
             if args.dist == 'dmol':
                 new_x_gen.append(nn.sample_from_discretized_mix_logistic(out, args.nr_logistic_mix))
             else:
-                new_x_gen.append(nn.sample_from_cat(out))
+                new_x_gen.append(nn.sample_from_cat(out, nr_color_channels=args.nr_color_channels))
 
 # add losses and gradients together and get training updates
 tf_lr = tf.placeholder(tf.float32, shape=[])
