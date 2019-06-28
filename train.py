@@ -35,7 +35,7 @@ parser.add_argument('-z', '--resnet_nonlinearity', type=str, default='concat_elu
 parser.add_argument('-c', '--class_conditional', dest='class_conditional', action='store_true', help='Condition generative model on labels?')
 parser.add_argument('-ed', '--energy_distance', dest='energy_distance', action='store_true', help='use energy distance in place of likelihood')
 parser.add_argument('-dt', '--dist', dest='dist', default='dmol', help='Output distribution type (dmol|cat)')
-parser.add_argument('-c', '--n_pixel_bit', default=8, help='Number of bits per pixel channel')
+parser.add_argument('-pb', '--n_pixel_bit', default=8, type=int, help='Number of bits per pixel channel')
 # optimization
 parser.add_argument('-l', '--learning_rate', type=float, default=0.001, help='Base learning rate')
 parser.add_argument('-e', '--lr_decay', type=float, default=0.999995, help='Learning rate decay, applied every step of the optimization')

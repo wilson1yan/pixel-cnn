@@ -111,8 +111,10 @@ def model_spec(x, h=None, init=False, ema=None, dropout_p=0.5, nr_resnet=5,
 
             else:
                 if dist == 'dmol':
+                    print('DMOL', nr_logistic_mix)
                     out_channels = 10 * nr_logistic_mix
                 else:
+                    print('Cat', 2 ** n_pixel_bit)
                     out_channels = 3 * (2 ** n_pixel_bit)
                 x_out = nn.nin(tf.nn.elu(ul),out_channels)
 

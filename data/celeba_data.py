@@ -17,11 +17,12 @@ def load(data_dir, subset='train'):
         lambda x: transforms.functional.crop(x, 50, 25, 128, 128),
         transforms.Resize((32, 32)),
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     dset = datasets.CelebA(os.path.join(data_dir), download=True, split=subset,
                            transform=transform)
     images = torch.stack([dset[i][0] for i in range(len(dset))], dim=0)
+    images = torch.floor((images * 255 + 1e-4) / (2 ** 8 / 256)) / 255
+    images = (images - 0.5) / 0.5
     images = images.numpy()
     return images, np.random.randint(0, 10, size=len(images))
 
