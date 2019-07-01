@@ -114,6 +114,7 @@ def sample_from_cat(l, temperature=1.0, nr_color_channels=3):
     n_color_dim = int(ls[-1] / nr_color_channels)
     print('n_color_dim', n_color_dim)
     l = tf.reshape(l, (ls[0], ls[1], ls[2], nr_color_channels, n_color_dim))
+    l = tf.nn.log_softmax(l, axis=-1)
     samples = tf.argmax(l / temperature - tf.log(-tf.log(tf.random_uniform(l.get_shape(), minval=1e-5, maxval=1-1e-5))), axis=-1)
     samples = tf.cast(samples, tf.float32)
     samples /= n_color_dim - 1
