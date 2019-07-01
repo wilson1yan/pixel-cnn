@@ -14,6 +14,8 @@ import time
 
 import numpy as np
 import tensorflow as tf
+import torch
+from torchvision.utils import save_image
 
 from pixel_cnn_pp import nn
 from pixel_cnn_pp.model import model_spec
@@ -168,6 +170,7 @@ bits_per_dim_test = loss_gen_test[0]/(args.nr_gpu*np.log(2.)*np.prod(obs_shape)*
 
 # sample from the model
 def sample_from_model(sess):
+    print('sampling')
     x_gen = [np.zeros((args.batch_size,) + obs_shape, dtype=np.float32) for i in range(args.nr_gpu)]
     for yi in range(obs_shape[0]):
         for xi in range(obs_shape[1]):
@@ -254,11 +257,15 @@ with tf.Session() as sess:
             for i in range(args.num_samples):
                 sample_x.append(sample_from_model(sess))
             sample_x = np.concatenate(sample_x,axis=0)
-            img_tile = plotting.img_tile(sample_x[:100], aspect_ratio=1.0, border_color=1.0, stretch=True)
-            img = plotting.plot_img(img_tile, title=args.data_set + ' samples')
-            plotting.plt.savefig(os.path.join(args.save_dir,'%s_sample%d.png' % (args.data_set, epoch)))
-            plotting.plt.close('all')
-            np.savez(os.path.join(args.save_dir,'%s_sample%d.npz' % (args.data_set, epoch)), sample_x)
+            sample_x = plotting.img_stretch(sample_x[:100])
+            sample_x = np.transpose(sample_x, (0, 3, 1, 2))
+            sample_x = torch.from_numpy(sample_x)
+            save_image(sample_x, os.path.join(args.save_dir, '%s_sample%d.png' % (args.data_set, epoch)), nrow=10)
+            #img_tile = plotting.img_tile(sample_x[:100], aspect_ratio=1.0, border_color=1.0, stretch=True)
+            #img = plotting.plot_img(img_tile, title=args.data_set + ' samples')
+            #plotting.plt.savefig(os.path.join(args.save_dir,'%s_sample%d.png' % (args.data_set, epoch)))
+            #plotting.plt.close('all')
+            #np.savez(os.path.join(args.save_dir,'%s_sample%d.npz' % (args.data_set, epoch)), sample_x)
 
             # save params
             saver.save(sess, args.save_dir + '/params_' + args.data_set + '.ckpt')
